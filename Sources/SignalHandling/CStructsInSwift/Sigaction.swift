@@ -131,6 +131,9 @@ public struct Sigaction : Equatable, RawRepresentable {
 			throw SignalHandlingError.nonDestructiveSystemError(Errno(rawValue: errno))
 		}
 		let oldSigaction = Sigaction(rawValue: oldCAction)
+		if !oldSigaction.isValid {
+			SignalHandlingConfig.logger?.error("Signal \(signal.rawValue): old sigaction is invalid. flags=\(oldSigaction.flags) handler=\(oldSigaction.handler)")
+		}
 		if revertIfIgnored && oldSigaction == .ignoreAction {
 			guard sigaction(signal.rawValue, &oldCAction, nil) == 0 else {
 				throw SignalHandlingError.destructiveSystemError(Errno(rawValue: errno))
