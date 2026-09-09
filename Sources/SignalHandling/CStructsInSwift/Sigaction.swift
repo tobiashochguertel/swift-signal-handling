@@ -63,7 +63,7 @@ public struct Sigaction : Equatable, RawRepresentable {
 #endif
 		
 		if !isValid {
-			SignalHandlingConfig.logger?.debug("Initialized an invalid Sigaction.")
+			SignalHandlingConfig.logger?.error("Initialized an invalid Sigaction. flags=\(flags) handler=\(handler) mask=\(mask)")
 		}
 	}
 	
@@ -77,7 +77,7 @@ public struct Sigaction : Equatable, RawRepresentable {
 	
 	public var rawValue: sigaction {
 		if !isValid {
-			SignalHandlingConfig.logger?.debug("Getting sigaction from an invalid Sigaction.")
+			SignalHandlingConfig.logger?.error("Getting sigaction from an invalid Sigaction. flags=\(flags) handler=\(handler) mask=\(mask)")
 		}
 		
 		var ret = sigaction()
