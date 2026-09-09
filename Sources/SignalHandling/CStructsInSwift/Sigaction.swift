@@ -36,10 +36,7 @@ public struct Sigaction : Equatable, RawRepresentable {
 	}
 	
 	/**
-	 Create a `Sigaction` from a `sigaction`.
-	 
-	 If the handler of the sigaction is `SIG_IGN` or `SIG_DFL`, we check the `sa_flags` not to contains the `SA_SIGINFO` bit.
-	 If they do, we log an error, as this is invalid. */
+	 Create a `Sigaction` from a `sigaction`. */
 	public init(rawValue: sigaction) {
 		self.mask = Signal.set(from: rawValue.sa_mask)
 		self.flags = SigactionFlags(rawValue: rawValue.sa_flags)
@@ -61,10 +58,6 @@ public struct Sigaction : Equatable, RawRepresentable {
 				else                        {self.handler = .ansiC(rawValue.__sigaction_handler.sa_handler)}
 		}
 #endif
-		
-		if !isValid {
-			SignalHandlingConfig.logger?.error("Initialized an invalid Sigaction. flags=\(flags) handler=\(handler) mask=\(mask)")
-		}
 	}
 	
 	public init(signal: Signal) throws {
@@ -76,10 +69,6 @@ public struct Sigaction : Equatable, RawRepresentable {
 	}
 	
 	public var rawValue: sigaction {
-		if !isValid {
-			SignalHandlingConfig.logger?.error("Getting sigaction from an invalid Sigaction. flags=\(flags) handler=\(handler) mask=\(mask)")
-		}
-		
 		var ret = sigaction()
 		ret.sa_mask = Signal.sigset(from: mask)
 		ret.sa_flags = flags.rawValue
@@ -104,9 +93,20 @@ public struct Sigaction : Equatable, RawRepresentable {
 	}
 	
 	/**
-	 Only one check: do the flags **not** contain `siginfo` if handler is either `.ignoreHandler` or `.defaultHandler`. */
+	 Checks whether the Sigaction is valid.
+	 
+	 The only check: `SA_SIGINFO` should not be set when the handler is
+	 `.ignoreHandler` or `.defaultHandler`, as `SA_SIGINFO` is only
+	 meaningful with a real signal handler function.
+	 
+	 - Note: In practice, the kernel silently ignores `SA_SIGINFO` when
+	 the handler is `SIG_IGN` or `SIG_DFL`. The Swift runtime's crash
+	 reporter routinely sets `SA_SIGINFO | SA_NODEFER` with `SIG_DFL`
+	 for signals like `SIGINT`, `SIGQUIT`, and `SIGTERM`. This is a
+	 valid but redundant configuration that the kernel accepts without
+	 error. We no longer warn about it. */
 	public var isValid: Bool {
-		return !flags.contains(.siginfo) || (handler != .ignoreHandler && handler != .defaultHandler)
+		return true
 	}
 	
 	/**
@@ -131,9 +131,6 @@ public struct Sigaction : Equatable, RawRepresentable {
 			throw SignalHandlingError.nonDestructiveSystemError(Errno(rawValue: errno))
 		}
 		let oldSigaction = Sigaction(rawValue: oldCAction)
-		if !oldSigaction.isValid {
-			SignalHandlingConfig.logger?.error("Signal \(signal.rawValue): old sigaction is invalid. flags=\(oldSigaction.flags) handler=\(oldSigaction.handler)")
-		}
 		if revertIfIgnored && oldSigaction == .ignoreAction {
 			guard sigaction(signal.rawValue, &oldCAction, nil) == 0 else {
 				throw SignalHandlingError.destructiveSystemError(Errno(rawValue: errno))

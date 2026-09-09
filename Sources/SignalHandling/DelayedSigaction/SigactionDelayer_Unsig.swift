@@ -247,9 +247,6 @@ public enum SigactionDelayer_Unsig {
 		/* Now we have removed **all** unsigactions on the given signal.
 		 * Let’s restore the signal to the state before unsigactions. */
 		try unsigactionedSignal.originalSigaction.install(on: id.signal, revertIfIgnored: false, updateUnsigRegistrations: false)
-		if !unsigactionedSignal.originalSigaction.isValid {
-			SignalHandlingConfig.logger?.error("Signal \(id.signal.rawValue): originalSigaction is invalid on unregister. flags=\(unsigactionedSignal.originalSigaction.flags) handler=\(unsigactionedSignal.originalSigaction.handler)")
-		}
 		unsigactionedSignal.dispatchSource.cancel()
 		
 		/* Finally, once the sigaction has been restored to the original value, we can remove the unsigactioned signal from the list. */
