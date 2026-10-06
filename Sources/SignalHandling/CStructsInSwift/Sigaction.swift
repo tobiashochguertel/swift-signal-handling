@@ -44,7 +44,8 @@ public struct Sigaction : Equatable, RawRepresentable, Sendable {
 	 Create a `Sigaction` from a `sigaction`.
 	 
 	 If the handler of the sigaction is `SIG_IGN` or `SIG_DFL`, we check the `sa_flags` not to contains the `SA_SIGINFO` bit.
-	 If they do, we log an error, as this is invalid. */
+	 If they do, the Sigaction is not ``isValid``. The kernel accepts this combination
+	 (the Swift runtime installs `SIG_DFL` with `SA_SIGINFO` for several signals), so we only log it at debug level. */
 	public init(rawValue: sigaction) {
 		self.mask = Signal.set(from: rawValue.sa_mask)
 		self.flags = SigactionFlags(rawValue: rawValue.sa_flags)
@@ -68,7 +69,7 @@ public struct Sigaction : Equatable, RawRepresentable, Sendable {
 #endif
 		
 		if !isValid {
-			Conf.logger?.warning("Initialized an invalid Sigaction.")
+			Conf.logger?.debug("Initialized an invalid Sigaction.")
 		}
 	}
 	
@@ -82,7 +83,7 @@ public struct Sigaction : Equatable, RawRepresentable, Sendable {
 	
 	public var rawValue: sigaction {
 		if !isValid {
-			Conf.logger?.warning("Getting sigaction from an invalid Sigaction.")
+			Conf.logger?.debug("Getting sigaction from an invalid Sigaction.")
 		}
 		
 		var ret = sigaction()
@@ -109,7 +110,9 @@ public struct Sigaction : Equatable, RawRepresentable, Sendable {
 	}
 	
 	/**
-	 Only one check: do the flags **not** contain `siginfo` if handler is either `.ignoreHandler` or `.defaultHandler`. */
+	 Only one check: do the flags **not** contain `siginfo` if handler is either `.ignoreHandler` or `.defaultHandler`.
+	 
+	 - Note: An invalid Sigaction is still accepted by the kernel, which ignores `SA_SIGINFO` for `SIG_IGN` and `SIG_DFL`. */
 	public var isValid: Bool {
 		return !flags.contains(.siginfo) || (handler != .ignoreHandler && handler != .defaultHandler)
 	}
